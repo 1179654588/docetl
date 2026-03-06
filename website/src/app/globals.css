@@ -1,0 +1,220 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 211 100% 98%;
+    --foreground: 211 5% 0%;
+    --card: 211 50% 95%;
+    --card-foreground: 211 5% 10%;
+    --popover: 211 100% 98%;
+    --popover-foreground: 211 100% 0%;
+    --primary: 211 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 211 30% 70%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 173 30% 85%;
+    --muted-foreground: 211 5% 35%;
+    --accent: 173 30% 80%;
+    --accent-foreground: 211 5% 10%;
+    --destructive: 0 100% 30%;
+    --destructive-foreground: 211 5% 90%;
+    --border: 211 30% 50%;
+    --input: 211 30% 18%;
+    --ring: 211 100% 50%;
+    --radius: 0.5rem;
+
+    /* Chart colors now use theme variables */
+    --chart-1: var(--chart1);
+    --chart-2: var(--chart2);
+    --chart-3: var(--chart3);
+    --chart-4: var(--chart4);
+    --chart-5: var(--chart5);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  }
+}
+
+@layer base {
+  body {
+    @apply transition-colors duration-200;
+  }
+}
+
+.demo-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.5s ease-in-out;
+}
+
+.demo-wrapper.show {
+  grid-template-rows: 1fr;
+}
+
+.demo-content {
+  overflow: hidden;
+}
+
+.demo-inner {
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.demo-wrapper.show .demo-inner {
+  opacity: 1;
+}
+
+.logo-text {
+  font-size: 2.5rem;
+  font-weight: bold;
+  @apply text-foreground;
+}
+
+/* .logo-icon {
+  color: hsl(var(--color-icon));
+} */
+
+.btn {
+  @apply px-4 py-2 rounded-md text-white font-bold transition-colors duration-200;
+}
+
+.btn-primary {
+  @apply bg-primary text-primary-foreground hover:bg-primary/90;
+}
+
+.btn-secondary {
+  @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-none {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.animate-shake {
+  animation: shake 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-slide-in {
+  opacity: 0;
+  animation: slideIn 0.5s ease-out forwards;
+}
+
+/* Replace the news ticker styles with these */
+.news-ticker {
+  position: relative;
+  width: 100%;
+  height: 2rem;
+  overflow: hidden;
+}
+
+.news-ticker-content {
+  position: absolute;
+  white-space: nowrap;
+  will-change: transform;
+  display: flex;
+  animation: tickerHorizontal 35s linear infinite;
+}
+
+.news-ticker-content:hover {
+  animation-play-state: paused;
+}
+
+.ticker-space {
+  display: inline-block;
+  width: 4rem;
+}
+
+.ticker-item {
+  flex-shrink: 0;
+  padding: 0 2rem;
+  font-size: 0.875rem;
+  color: rgb(var(--foreground));
+}
+
+@keyframes tickerHorizontal {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.news-ticker:hover {
+  cursor: pointer;
+}
+
+/* Add these styles */
+[data-panel] {
+  transition: none; /* Remove transition during resize */
+}
+
+[data-panel-group] {
+  transition: width 50ms ease, height 50ms ease;
+}
+
+/* Replace the resize handle styles with these cleaner versions */
+[data-resize-handle] {
+  position: relative;
+}
+
+[data-resize-handle][data-dragging="true"] {
+  background-color: rgb(96 165 250); /* blue-400 */
+}
+
+[data-dragging="true"] {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Remove the previous ::before pseudo-element styles */
+[data-dragging="true"]::before {
+  display: none;
+}

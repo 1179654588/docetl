@@ -1,0 +1,191 @@
+import { createAzure } from "@ai-sdk/azure";
+import { createOpenAI } from "@ai-sdk/openai";
+import { streamText } from "ai";
+import { createClient } from "@supabase/supabase-js";
+import { encode } from "gpt-tokenizer";
+
+interface ChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+const supabase =
+  process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
+    ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+    : null;
+
+const shouldUseTemperatureOne = (name?: string | null) =>
+  typeof name === "string" && name.toLowerCase().includes("gpt-5");
+
+const MAX_TOTAL_CHARS = 500000;
+const MAX_NUMBER_TOKENS = 120000;
+
+function truncateMessages(messages: ChatMessage[]): ChatMessage[] {
+  // Calculate total length
+  let totalLength = messages.reduce((sum, msg) => sum + msg.content.length, 0);
+
+  // If under limit, return original messages
+  if (totalLength <= MAX_TOTAL_CHARS) {
+    return messages;
+  }
+
+  // Clone messages to avoid mutating original array
+  const truncatedMessages = JSON.parse(JSON.stringify(messages));
+
+  while (totalLength > MAX_TOTAL_CHARS) {
+    console.log(`Messages are too long (${totalLength} chars), truncating...`);
+
+    // Estimate token count for the entire content
+    const allContent = truncatedMessages.map((msg) => msg.content).join(" ");
+    const tokenEstimation = encode(allContent).length;
+    const avgRatio = tokenEstimation / totalLength;
+
+    // Calculate how many tokens need to be removed
+    const tokensToRemove = Math.max(0, tokenEstimation - MAX_NUMBER_TOKENS);
+
+    // Convert tokens to characters using the average ratio
+    const charsToRemove = Math.ceil(tokensToRemove / avgRatio);
+
+    // Find longest message
+    let longestMsgIndex = 0;
+    let maxLength = 0;
+
+    truncatedMessages.forEach((msg: ChatMessage, index: number) => {
+      if (msg.content.length > maxLength) {
+        maxLength = msg.content.length;
+        longestMsgIndex = index;
+      }
+    });
+
+    // Get the message to truncate
+    const message = truncatedMessages[longestMsgIndex];
+    const contentLength = message.content.length;
+
+    // Calculate the middle section to remove based on token estimation
+    // Ensure we don't remove more than half the message
+    const removeLength = Math.min(charsToRemove, Math.floor(contentLength / 2));
+    const middlePoint = Math.floor(contentLength / 2);
+    const halfRemoveLength = Math.floor(removeLength / 2);
+
+    const startPos = Math.max(0, middlePoint - halfRemoveLength);
+    const endPos = Math.min(contentLength, middlePoint + halfRemoveLength);
+
+    // Truncate the middle section
+    message.content =
+      message.content.substring(0, startPos) +
+      " ... " +
+      message.content.substring(endPos);
+
+    // Recalculate total length
+    totalLength = truncatedMessages.reduce(
+      (sum: number, msg: ChatMessage) => sum + msg.content.length,
+      0
+    );
+  }
+
+  return truncatedMessages;
+}
+
+export async function POST(req: Request) {
+  let messages: ChatMessage[] = [];
+  let personalApiKey: string | null = null;
+  let useOpenAI = false;
+  let source: string | null = null;
+
+  try {
+    ({ messages } = await req.json());
+    personalApiKey = req.headers.get("x-openai-key");
+    useOpenAI = req.headers.get("x-use-openai") === "true";
+    const namespace = req.headers.get("x-namespace");
+    source = req.headers.get("x-source");
+    const truncatedMessages = truncateMessages(messages);
+
+    let result;
+
+    // Use OpenAI if explicitly requested via header
+    if (useOpenAI) {
+      const openai = createOpenAI({
+        apiKey: personalApiKey || process.env.OPENAI_API_KEY!,
+        baseURL: process.env.OPENAI_API_BASE || "https://api.openai.com/v1",
+        compatibility: "strict",
+      });
+
+      const openAiModelName = process.env.MODEL_NAME || "gpt-4o-mini";
+      const openAiOptions: Parameters<typeof streamText>[0] = {
+        model: openai(openAiModelName),
+        system:
+          truncatedMessages.find((m: ChatMessage) => m.role === "system")
+            ?.content || "You are a helpful assistant.",
+        messages: truncatedMessages.filter((m: ChatMessage) => m.role !== "system"),
+      };
+
+      if (shouldUseTemperatureOne(openAiModelName)) {
+        openAiOptions.temperature = 1;
+      }
+
+      result = await streamText(openAiOptions);
+    } else {
+      // Use Azure OpenAI
+      const azure = createAzure({
+        apiKey: process.env.AZURE_API_KEY!,
+        apiVersion: process.env.AZURE_API_VERSION,
+        resourceName: process.env.AZURE_RESOURCE_NAME,
+      });
+
+      const azureModelName = process.env.AZURE_DEPLOYMENT_NAME || "gpt-4o-mini";
+      const azureOptions: Parameters<typeof streamText>[0] = {
+        model: azure(azureModelName),
+        system:
+          truncatedMessages.find((m: ChatMessage) => m.role === "system")
+            ?.content || "You are a helpful assistant.",
+        messages: truncatedMessages.filter((m: ChatMessage) => m.role !== "system"),
+        onFinish: async ({ usage }) => {
+          if (!supabase) return;
+
+          const cost =
+            (usage.promptTokens * 2.5) / 1_000_000 +
+            (usage.completionTokens * 10) / 1_000_000;
+
+          try {
+            const { error } = await supabase
+              .from("frontend_ai_requests")
+              .insert({
+                messages,
+                namespace,
+                cost,
+                source: source || "unknown",
+              });
+
+            if (error) {
+              console.error("Supabase insert error:", error);
+            } else {
+              console.log("Successfully logged to Supabase");
+            }
+          } catch (err) {
+            console.error("Failed to log to Supabase:", err);
+          }
+        },
+      };
+
+      if (shouldUseTemperatureOne(azureModelName)) {
+        azureOptions.temperature = 1;
+      }
+
+      result = await streamText(azureOptions);
+    }
+
+    return result.toDataStreamResponse();
+  } catch (error) {
+    console.error("Chat API error:", error);
+
+    return new Response(
+      JSON.stringify({
+        error:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
+}

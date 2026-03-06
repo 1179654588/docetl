@@ -1,0 +1,82 @@
+.env
+*__pycache__*
+*scratch*
+*relevance_assessment*
+palimpzest/*
+paper_workloads/contracts/full_contract_txt*
+paper_workloads/contracts/sample_contract_txt*
+*.xlsx
+*.csv
+paper_workloads/*
+preprint_workloads/*
+workloads/*
+*mypy_cache*
+*.DS_Store
+*pytest_cache*
+*ruff_cache*
+motion-old*
+venv/
+
+# dependencies
+website/node_modules
+website/.pnp
+website/.pnp.js
+website/.yarn/install-state.gz
+
+# testing
+website/coverage
+
+# next.js
+website/.next/
+website/out/
+
+# production
+website/build
+
+# misc
+website/.DS_Store
+website/*.pem
+
+# debug
+website/npm-debug.log*
+website/yarn-debug.log*
+website/yarn-error.log*
+
+# local env files
+website/.env*.local
+
+# vercel
+website/.vercel
+
+# typescript
+website/*.tsbuildinfo
+website/next-env.d.ts
+
+# Docker
+.docker/
+
+# experiments
+experiments/*.json
+experiments/reasoning/data/*.json
+
+metrics_vs_cost.png
+tests/data/anthropic-red-team-attempts.jsonl
+tests/data/get_freshstack.py
+!experiments/reasoning/data/operators_documentation.txt
+*.txt
+*.yaml
+*.yml
+*.json
+!*lotus_evaluation.json
+!*pz_evaluation.json
+!*pz_*_evaluation.json
+*.png
+graph.py
+graph_baseline.py
+kendalltau.py
+
+slides/*
+node_modules/*
+
+reaction_index/
+*experiments/reasoning/othersystems/biodex/.chroma-biodex/
