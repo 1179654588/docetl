@@ -128,7 +128,7 @@ def xlsx_to_string(
     import openpyxl
     import io, requests
 
-    col_order = [col.strip() for col in col_order.split(",")] if col_order else None
+    col_order = [col.strip() for col in col_order.split(",")] if isinstance(col_order, str) else col_order 
     max_rows_per_str = int(max_rows_per_str)
     print("col_order:", col_order)
     # 1. 获取文件流
